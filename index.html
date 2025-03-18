@@ -1,0 +1,204 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda y objetivos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+        }
+        textarea, input {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin: 5px 0;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px;
+            margin: 5px 0;
+            cursor: pointer;
+            width: 100%;
+        }
+        .card {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 400px;
+            text-align: left;
+            position: relative;
+        }
+        .close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        pre{
+            margin-top: 2px;
+            margin-bottom: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Agenda</h1>
+        <textarea id="description" placeholder="Descripción" rows="4"></textarea>
+        <input type="text" id="date" placeholder="Tipo">
+        <button onclick="addData()">Agregar</button>
+        <div id="data-container"></div>
+    </div>
+
+    <!-- Modal -->
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Editar Datos</h2>
+            <textarea id="description_modal" placeholder="Descripción" rows="20"></textarea>
+            <input type="text" id="date_modal" placeholder="Fecha">
+            <button onclick="editar()">Guardar Cambios</button>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "https://676c6aaa0e299dd2ddfcc3b3.mockapi.io/sdf/sddd";
+
+        async function fetchData() {
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                const container = document.getElementById("data-container");
+                container.innerHTML = "";
+                data.forEach(user => {
+                    const card = document.createElement("div");
+                    card.classList.add("card");
+                    card.innerHTML = `
+                        <pre><strong>Descripción:</strong> ${user.name}</pre>
+                        <pre><strong>Tipo:</strong> ${user.dia}</pre>
+                        <div style="display:flex;">
+                            <button onclick="deleteData('${user.id}')">Eliminar</button>
+                            <button onclick="openModal('${user.id}')">Editar</button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (error) {
+                console.error("Error al obtener los datos:", error);
+            }
+        }
+
+        async function addData() {
+            const description = document.getElementById("description").value.trim();
+            const date = document.getElementById("date").value.trim();
+            if (!description || !date) {
+                alert("Por favor, complete todos los campos");
+                return;
+            }
+            try {
+                await fetch(API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name: description, dia: date })
+                });
+                document.getElementById("description").value = "";
+                document.getElementById("date").value = "";
+                fetchData();
+            } catch (error) {
+                console.error("Error al agregar datos:", error);
+                alert("Error al agregar datos");
+            }
+        }
+
+        async function deleteData(id) {
+            try {
+                await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+                fetchData();
+            } catch (error) {
+                console.error("Error al eliminar datos:", error);
+                alert("Error al eliminar datos");
+            }
+        }
+
+        // Abrir modal y cargar datos
+        async function openModal(id) {
+            document.getElementById("myModal").style.display = "flex";
+            localStorage.setItem("currentEditId", id);
+
+            try {
+                const response = await fetch(`${API_URL}/${id}`);
+                const data = await response.json();
+                document.getElementById("description_modal").value = data.name;
+                document.getElementById("date_modal").value = data.dia;
+            } catch (error) {
+                console.error("Error al obtener los datos:", error);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById("myModal").style.display = "none";
+        }
+
+        async function editar() {
+            const id = localStorage.getItem("currentEditId");
+            if (!id) return;
+
+            const newDescription = document.getElementById("description_modal").value.trim();
+            const newDate = document.getElementById("date_modal").value.trim();
+            if (!newDescription || !newDate) {
+                alert("Por favor, complete todos los campos");
+                return;
+            }
+
+            try {
+                await fetch(`${API_URL}/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name: newDescription, dia: newDate })
+                });
+                closeModal();
+                fetchData();
+            } catch (error) {
+                console.error("Error al editar datos:", error);
+                alert("Error al editar datos");
+            }
+        }
+
+        // Cargar datos al inicio
+        fetchData();
+
+        // Cerrar modal al hacer clic fuera de él
+        window.onclick = function(event) {
+            const modal = document.getElementById("myModal");
+            if (event.target === modal) {
+                closeModal();
+            }
+        };
+    </script>
+</body>
+</html>
